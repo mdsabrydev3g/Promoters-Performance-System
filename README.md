@@ -16,3 +16,5 @@ Run `npx prisma generate`, then `npx prisma db push` for a new database. Seed wi
 
 ## Production rules
 Never commit .env files. Manager authentication is server-side. Historical months remain isolated from current target allocation.
+
+<!-- deployment trigger: prisma-schema-fix -->
