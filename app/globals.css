@@ -16,7 +16,7 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,Arial,san
 @media(max-width:1000px){.employee-grid{grid-template-columns:repeat(2,1fr)}.cards{grid-template-columns:repeat(2,1fr)}.daily-grid{grid-template-columns:repeat(2,1fr)}}@media(max-width:700px){main{padding:13px}header{align-items:flex-start;flex-direction:column}.actions{width:100%}.actions button{flex:1}.toolbar{flex-wrap:wrap}.toolbar select{flex:1}.search{flex-basis:100%}.controlbar{align-items:stretch;flex-direction:column}.controlbar .actions{width:100%}.controlbar .actions button{flex:1}.employee-grid{grid-template-columns:1fr;padding:0 10px 12px}.daily-grid{grid-template-columns:1fr}.cards{grid-template-columns:1fr 1fr;gap:8px}.card{padding:12px}.card strong{font-size:18px}h1{font-size:23px}.grid2{grid-template-columns:1fr}.target-list label{grid-template-columns:1fr 105px}.modal{padding:15px}}
 @media(max-width:430px){.cards{grid-template-columns:1fr 1fr}.card .icon{display:none}.card small{font-size:10px}.card strong{font-size:17px}.tabs button{flex:1;padding:8px 7px;font-size:12px}}
 
-.action-panels{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:18px}
+.action-panels{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:10px}
 .action-half{display:grid;grid-template-columns:1fr 1fr;gap:8px;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:9px}
 .action-main,.action-sub{min-height:54px;border:1px solid var(--border);border-radius:10px;cursor:pointer;font-weight:800;display:flex;align-items:center;justify-content:center;gap:7px;background:var(--soft);color:var(--text)}
 .action-main{background:var(--primary);color:#fff;border-color:var(--primary)}
