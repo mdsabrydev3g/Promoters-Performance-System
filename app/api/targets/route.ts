@@ -45,15 +45,12 @@ export async function POST(req: Request) {
         update: { amount: data.amount },
       });
 
+      // Rebuild this department's employee allocations for the selected month.
+      // This makes clearing a manual value correctly return that employee to AUTO.
+      await tx.employeeTarget.deleteMany({
+        where: { year: data.year, month: data.month, monthlyTargetId: target.id },
+      });
       if (data.employeeTargets.length) {
-        await tx.employeeTarget.deleteMany({
-          where: {
-            year: data.year,
-            month: data.month,
-            monthlyTargetId: target.id,
-            employeeId: { in: data.employeeTargets.map((x) => x.employeeId) },
-          },
-        });
         for (const item of data.employeeTargets) {
           await tx.employeeTarget.create({
             data: {
