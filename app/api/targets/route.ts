@@ -45,10 +45,17 @@ export async function POST(req: Request) {
       });
 
       // Sales targets are always distributed equally across every ACTIVE promoter.
-      // Any old MANUAL/AUTO allocation for this department/month is replaced.
-      await tx.employeeTarget.deleteMany({
-        where: { year: data.year, month: data.month, monthlyTargetId: target.id },
-      });
+      // Remove ALL previous allocations for these promoters in this month first.
+      // This is important when an old allocation was linked to an older MonthlyTarget row.
+      if (active.length) {
+        await tx.employeeTarget.deleteMany({
+          where: {
+            year: data.year,
+            month: data.month,
+            employeeId: { in: active.map((employee) => employee.id) },
+          },
+        });
+      }
 
       const each = active.length ? data.amount / active.length : 0;
       if (active.length) {
