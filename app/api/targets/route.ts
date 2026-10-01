@@ -88,7 +88,9 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json(result);
-  } catch {
-    return NextResponse.json({ error: "Unable to save target" }, { status: 400 });
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "Unknown database error";
+    console.error("TARGET_SAVE_ERROR", e);
+    return NextResponse.json({ error: message || "Unable to save target" }, { status: 400 });
   }
 }
