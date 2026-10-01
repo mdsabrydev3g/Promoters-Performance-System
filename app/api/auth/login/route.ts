@@ -7,7 +7,7 @@ const DEMO_PASSWORD="Demo@2026";
 export async function POST(req:Request){
   const {password}=await req.json().catch(()=>({password:""}));
   const configuredPassword=process.env.ADMIN_PASSWORD;
-  const expectedPassword=configuredPassword || (!process.env.DATABASE_URL ? DEMO_PASSWORD : "");
+  const expectedPassword=configuredPassword || DEMO_PASSWORD;
   if(!expectedPassword || password!==expectedPassword){
     return NextResponse.json({error:"Invalid password"},{status:401});
   }
