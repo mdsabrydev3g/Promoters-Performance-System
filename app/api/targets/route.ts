@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireManager } from "@/lib/auth";
-import { assertMonthOpen } from "@/lib/month-lock";
 
 const body = z.object({
   year: z.number().int(),
@@ -31,7 +30,6 @@ export async function POST(req: Request) {
 
   try {
     const data = body.parse(await req.json());
-    await assertMonthOpen(data.year, data.month);
 
     const result = await prisma.$transaction(async (tx) => {
       const active = await tx.employee.findMany({
