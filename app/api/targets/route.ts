@@ -45,10 +45,32 @@ export async function POST(req: Request) {
         update: { amount: data.amount },
       });
 
-      const old = await tx.employeeTarget.findMany({
+      if (data.employeeTargets.length) {
+        await tx.employeeTarget.deleteMany({
+          where: {
+            year: data.year,
+            month: data.month,
+            monthlyTargetId: target.id,
+            employeeId: { in: data.employeeTargets.map((x) => x.employeeId) },
+          },
+        });
+        for (const item of data.employeeTargets) {
+          await tx.employeeTarget.create({
+            data: {
+              year: data.year,
+              month: data.month,
+              employeeId: item.employeeId,
+              monthlyTargetId: target.id,
+              mode: "MANUAL",
+              amount: item.amount,
+            },
+          });
+        }
+      }
+      const refreshed = await tx.employeeTarget.findMany({
         where: { year: data.year, month: data.month, monthlyTargetId: target.id },
       });
-      const manual = new Map(old.filter(x => x.mode === "MANUAL").map(x => [x.employeeId, x]));
+      const manual = new Map(refreshed.filter(x => x.mode === "MANUAL").map(x => [x.employeeId, x]));
       const manualTotal = [...manual.values()].reduce((sum, x) => sum + Number(x.amount), 0);
       if (manualTotal > data.amount) throw new Error("MANUAL_TARGETS_EXCEED_DEPARTMENT_TARGET");
 
