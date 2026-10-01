@@ -47,5 +47,5 @@ export async function POST(req:Request){
       return tx.agencyTarget.findUnique({where:{id:target.id},include:{employeeTargets:true}});
     });
     return NextResponse.json(result);
-  }catch(e){const m=e instanceof Error?e.message:"";if(m==="MONTH_LOCKED")return NextResponse.json({error:"Month is locked"},{status:423});return NextResponse.json({error:"Unable to save target"},{status:400});}
+  }catch(e){const m=e instanceof Error?e.message:"";if(m==="MONTH_LOCKED")return NextResponse.json({error:"Month is locked"},{status:423});console.error("SPECIAL_TARGET_SAVE_ERROR",e);return NextResponse.json({error:e instanceof Error?e.message:"Unable to save target"},{status:400});}
 }
