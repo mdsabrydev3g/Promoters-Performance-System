@@ -4,7 +4,6 @@ import { prisma } from "@/lib/prisma";
 import { requireManager } from "@/lib/auth";
 
 const schema = z.object({
-  invoiceNumber: z.string().trim().min(1),
   date: z.string(),
   employeeId: z.string(),
   amount: z.number().nonnegative(),
@@ -42,15 +41,16 @@ export async function POST(req: Request) {
     const employee = await prisma.employee.findUnique({ where: { id: d.employeeId } });
     if (!employee) return NextResponse.json({ error: "Employee not found" }, { status: 404 });
     const row = await prisma.$transaction(async tx => {
+      const invoiceNumber = `INV-${Date.now()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
       const invoice = await tx.invoice.create({
-        data: { invoiceNumber:d.invoiceNumber, date, employeeId:d.employeeId, amount:d.amount, warranty:d.warranty, agency:d.agency, notes:d.notes },
+        data: { invoiceNumber, date, employeeId:d.employeeId, amount:d.amount, warranty:d.warranty, agency:d.agency, notes:d.notes },
         include: { employee: true },
       });
       await tx.auditLog.create({ data:{ action:"CREATE", entity:"Invoice", entityId:invoice.id, details:{invoiceNumber:invoice.invoiceNumber} }});
       return invoice;
     });
     return NextResponse.json(row,{status:201});
-  } catch { return NextResponse.json({ error:"Invalid or duplicate invoice" },{status:400}); }
+  } catch { return NextResponse.json({ error:"Unable to save invoice" },{status:400}); }
 }
 
 export async function PUT(req: Request) {
@@ -64,7 +64,7 @@ export async function PUT(req: Request) {
     const employee = await prisma.employee.findUnique({where:{id:body.employeeId}});
     if (!employee) return NextResponse.json({error:"Employee not found"},{status:404});
     const row=await prisma.$transaction(async tx=>{
-      const invoice=await tx.invoice.update({where:{id:body.id},data:{invoiceNumber:body.invoiceNumber,date,employeeId:body.employeeId,amount:body.amount,warranty:body.warranty,agency:body.agency,notes:body.notes},include:{employee:true}});
+      const invoice=await tx.invoice.update({where:{id:body.id},data:{date,employeeId:body.employeeId,amount:body.amount,warranty:body.warranty,agency:body.agency,notes:body.notes},include:{employee:true}});
       await tx.auditLog.create({data:{action:"UPDATE",entity:"Invoice",entityId:invoice.id,details:{invoiceNumber:invoice.invoiceNumber}}});
       return invoice;
     });
