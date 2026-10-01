@@ -9,6 +9,7 @@ const body = z.object({
   month: z.number().int().min(1).max(12),
   departmentId: z.string(),
   amount: z.number().nonnegative(),
+  employeeTargets: z.array(z.object({ employeeId: z.string(), amount: z.number().nonnegative() })).default([]),
 });
 
 export async function GET(req: Request) {
