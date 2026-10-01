@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireManager } from "@/lib/auth";
-import { assertMonthOpen } from "@/lib/month-lock";
 
 const schema = z.object({
   invoiceNumber: z.string().trim().min(1),
@@ -18,9 +17,7 @@ export async function GET(req: Request) {
   const u = new URL(req.url);
   const year = Number(u.searchParams.get("year"));
   const month = Number(u.searchParams.get("month"));
-  if (!year || month < 1 || month > 12) {
-    return NextResponse.json({ error: "Invalid year/month" }, { status: 400 });
-  }
+  if (!year || month < 1 || month > 12) return NextResponse.json({ error: "Invalid year/month" }, { status: 400 });
   const from = new Date(Date.UTC(year, month - 1, 1));
   const to = new Date(Date.UTC(year, month, 1));
   const rows = await prisma.invoice.findMany({
@@ -31,57 +28,61 @@ export async function GET(req: Request) {
   return NextResponse.json(rows);
 }
 
-export async function POST(req: Request) {
-  try {
-    await requireManager();
-  } catch {
-    return NextResponse.json({ error: "Manager authentication required" }, { status: 401 });
-  }
+async function manager() {
+  try { await requireManager(); return null; }
+  catch { return NextResponse.json({ error: "Manager authentication required" }, { status: 401 }); }
+}
 
+export async function POST(req: Request) {
+  const denied = await manager(); if (denied) return denied;
   try {
     const d = schema.parse(await req.json());
     const date = new Date(d.date);
-    if (Number.isNaN(date.getTime())) {
-      return NextResponse.json({ error: "Invalid date" }, { status: 400 });
-    }
-    const year = date.getUTCFullYear();
-    const month = date.getUTCMonth() + 1;
-    await assertMonthOpen(year, month);
-
+    if (Number.isNaN(date.getTime())) return NextResponse.json({ error: "Invalid date" }, { status: 400 });
     const employee = await prisma.employee.findUnique({ where: { id: d.employeeId } });
-    if (!employee || employee.status !== "ACTIVE") {
-      return NextResponse.json({ error: "Active employee not found" }, { status: 404 });
-    }
-
-    const row = await prisma.$transaction(async (tx) => {
+    if (!employee) return NextResponse.json({ error: "Employee not found" }, { status: 404 });
+    const row = await prisma.$transaction(async tx => {
       const invoice = await tx.invoice.create({
-        data: {
-          invoiceNumber: d.invoiceNumber,
-          date,
-          employeeId: d.employeeId,
-          amount: d.amount,
-          warranty: d.warranty,
-          agency: d.agency,
-          notes: d.notes,
-        },
+        data: { invoiceNumber:d.invoiceNumber, date, employeeId:d.employeeId, amount:d.amount, warranty:d.warranty, agency:d.agency, notes:d.notes },
         include: { employee: true },
       });
-      await tx.auditLog.create({
-        data: {
-          action: "CREATE",
-          entity: "Invoice",
-          entityId: invoice.id,
-          details: { invoiceNumber: invoice.invoiceNumber, year, month },
-        },
-      });
+      await tx.auditLog.create({ data:{ action:"CREATE", entity:"Invoice", entityId:invoice.id, details:{invoiceNumber:invoice.invoiceNumber} }});
       return invoice;
     });
-    return NextResponse.json(row, { status: 201 });
-  } catch (e) {
-    const message = e instanceof Error ? e.message : "";
-    if (message === "MONTH_LOCKED") {
-      return NextResponse.json({ error: "Month is locked" }, { status: 423 });
-    }
-    return NextResponse.json({ error: "Invalid or duplicate invoice" }, { status: 400 });
-  }
+    return NextResponse.json(row,{status:201});
+  } catch { return NextResponse.json({ error:"Invalid or duplicate invoice" },{status:400}); }
+}
+
+export async function PUT(req: Request) {
+  const denied = await manager(); if (denied) return denied;
+  try {
+    const body = schema.extend({ id:z.string().min(1) }).parse(await req.json());
+    const date = new Date(body.date);
+    if (Number.isNaN(date.getTime())) return NextResponse.json({error:"Invalid date"},{status:400});
+    const existing = await prisma.invoice.findUnique({where:{id:body.id}});
+    if (!existing) return NextResponse.json({error:"Invoice not found"},{status:404});
+    const employee = await prisma.employee.findUnique({where:{id:body.employeeId}});
+    if (!employee) return NextResponse.json({error:"Employee not found"},{status:404});
+    const row=await prisma.$transaction(async tx=>{
+      const invoice=await tx.invoice.update({where:{id:body.id},data:{invoiceNumber:body.invoiceNumber,date,employeeId:body.employeeId,amount:body.amount,warranty:body.warranty,agency:body.agency,notes:body.notes},include:{employee:true}});
+      await tx.auditLog.create({data:{action:"UPDATE",entity:"Invoice",entityId:invoice.id,details:{invoiceNumber:invoice.invoiceNumber}}});
+      return invoice;
+    });
+    return NextResponse.json(row);
+  } catch { return NextResponse.json({error:"Unable to update invoice. Invoice number may already exist."},{status:400}); }
+}
+
+export async function DELETE(req: Request) {
+  const denied = await manager(); if (denied) return denied;
+  try {
+    const id = new URL(req.url).searchParams.get("id");
+    if (!id) return NextResponse.json({error:"Invoice id required"},{status:400});
+    const existing=await prisma.invoice.findUnique({where:{id}});
+    if(!existing) return NextResponse.json({error:"Invoice not found"},{status:404});
+    await prisma.$transaction(async tx=>{
+      await tx.invoice.delete({where:{id}});
+      await tx.auditLog.create({data:{action:"DELETE",entity:"Invoice",entityId:id,details:{invoiceNumber:existing.invoiceNumber}}});
+    });
+    return NextResponse.json({ok:true});
+  } catch { return NextResponse.json({error:"Unable to delete invoice"},{status:400}); }
 }
