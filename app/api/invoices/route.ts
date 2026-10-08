@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireManager } from "@/lib/auth";
+import { assertMonthOpen } from "@/lib/month-lock";
 
 const schema = z.object({
   date: z.string(),
@@ -37,6 +38,7 @@ export async function POST(req: Request) {
   try {
     const d = schema.parse(await req.json());
     const date = new Date(d.date);
+    await assertMonthOpen(date.getUTCFullYear(), date.getUTCMonth()+1);
     if (Number.isNaN(date.getTime())) return NextResponse.json({ error: "Invalid date" }, { status: 400 });
     const employee = await prisma.employee.findUnique({ where: { id: d.employeeId } });
     if (!employee) return NextResponse.json({ error: "Employee not found" }, { status: 404 });
@@ -58,8 +60,10 @@ export async function PUT(req: Request) {
   try {
     const body = schema.extend({ id:z.string().min(1) }).parse(await req.json());
     const date = new Date(body.date);
+    await assertMonthOpen(date.getUTCFullYear(), date.getUTCMonth()+1);
     if (Number.isNaN(date.getTime())) return NextResponse.json({error:"Invalid date"},{status:400});
     const existing = await prisma.invoice.findUnique({where:{id:body.id}});
+    if (existing) await assertMonthOpen(new Date(existing.date).getUTCFullYear(), new Date(existing.date).getUTCMonth()+1);
     if (!existing) return NextResponse.json({error:"Invoice not found"},{status:404});
     const employee = await prisma.employee.findUnique({where:{id:body.employeeId}});
     if (!employee) return NextResponse.json({error:"Employee not found"},{status:404});
@@ -78,6 +82,7 @@ export async function DELETE(req: Request) {
     const id = new URL(req.url).searchParams.get("id");
     if (!id) return NextResponse.json({error:"Invoice id required"},{status:400});
     const existing=await prisma.invoice.findUnique({where:{id}});
+    if (existing) await assertMonthOpen(new Date(existing.date).getUTCFullYear(), new Date(existing.date).getUTCMonth()+1);
     if(!existing) return NextResponse.json({error:"Invoice not found"},{status:404});
     await prisma.$transaction(async tx=>{
       await tx.invoice.delete({where:{id}});
