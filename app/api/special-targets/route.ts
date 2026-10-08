@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireManager } from "@/lib/auth";
+import { assertMonthOpen } from "@/lib/month-lock";
 
 const schema=z.object({
   year:z.number().int(),
