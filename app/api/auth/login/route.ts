@@ -2,12 +2,11 @@ import {NextResponse} from "next/server";
 import {cookies} from "next/headers";
 import {signSession} from "@/lib/auth";
 
-const DEMO_PASSWORD="Demo@2026";
 
 export async function POST(req:Request){
   const {password}=await req.json().catch(()=>({password:""}));
   const configuredPassword=process.env.ADMIN_PASSWORD;
-  const expectedPassword=configuredPassword || DEMO_PASSWORD;
+  const expectedPassword=configuredPassword || "";
   if(!expectedPassword || password!==expectedPassword){
     return NextResponse.json({error:"Invalid password"},{status:401});
   }
